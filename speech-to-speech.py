@@ -7,6 +7,8 @@ from time import sleep
 from fuzzywuzzy import process
 import pyaudio
 from playsound import playsound
+import sounddevice as sd
+from pydub import AudioSegment
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="medium", help="Model to use",
@@ -117,9 +119,7 @@ if __name__ == '__main__':
     q = Queue()
     p = Process(target=recognize, args=(q,))
     p.start()
-    temp_file = NamedTemporaryFile().name
 
-    i = 0
     while True:
         try:
             data = q.get()
@@ -139,10 +139,10 @@ if __name__ == '__main__':
             response = requests.post(url, data=json.dumps(data), headers=headers)
 
             if response.status_code == 200:
-                with open("temp" + str(i) + ".mp3", 'w+b') as f:
+                new_temp_file = NamedTemporaryFile().name + ".mp3"
+                with open(new_temp_file, 'w+b') as f:
                     f.write(response.content)
-                playsound(os.path.abspath("temp" + str(i) + ".mp3"))
-                i += 1
+                playsound(new_temp_file)
             else:
                 print("Error")
         except KeyboardInterrupt:
