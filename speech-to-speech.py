@@ -19,6 +19,7 @@ parser.add_argument("--phrase_timeout", default=2.0, help="How much silence befo
 parser.add_argument("--consensus_threshold", default=0.75, help="If edit distance ratio > threshold then we speak the segment", type=float)
 parser.add_argument("--input_language", default="English", help="The language that will be spoken as input", type=str)
 parser.add_argument("--translate", action='store_true', help="Whether or not to translate the input (if not included text will be transcribed)")
+parser.add_argument("--no_consensus", action='store_true', help="Disable checking for consensus")
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
 args = parser.parse_args()
@@ -85,23 +86,31 @@ def recognize(q):
                     f.write(wav_data.read())
 
                 # Get the transcription / translation
-                result = audio_model.transcribe(temp_file, task=task, language=args.input_language.lower())
+                time1 = time.time()
+                result = audio_model.transcribe(temp_file, fp16=torch.cuda.is_available(), task=task, language=args.input_language)
+                time2 = time.time()
                 
                 if args.verbose:
-                    print(f"[[{[(s['text'], s['start'], s['end']) for s in result['segments']]}]] - {spoken - tolerance}")
+                    print(f"({time2 - time1}) [[{[(s['text'], s['start'], s['end']) for s in result['segments'] if s['start'] > spoken - args.tolerance]}]]")
 
                 # If there was a previous result, try to find consensus
                 if prev:
                     for s in result['segments']:
                         # If the segment is before where we've already spoken, don't bother
-                        if s['start'] <= spoken - args.tolerance:
+                        if s['start'] <= max(spoken - args.tolerance, 0.0):
                             continue
                         
                         # If the segment is first and no speech prob is high, don't speak
                         if s['start'] == 0.0 and s['no_speech_prob'] > 0.7:
                             continue
                         
-                        # If the segment is past the previous spoken segment we're done
+                        # If we are not using consensus just speak whatever we have immediately
+                        if args.no_consensus:
+                            q.put(s['text'].strip())
+                            spoken = s['end']
+                            continue
+                        
+                        # If the segment is past the end of where previous had, we're done
                         if s['id'] >= len(prev['segments']):
                             break
                         
