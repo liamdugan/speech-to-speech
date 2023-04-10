@@ -1,17 +1,24 @@
 from multiprocessing import Process, Queue
-import requests, wave, json, argparse, whisper, torch, io, os, queue
+import requests, wave, json, argparse, torch, io, os, queue
+import whisper
 import speech_recognition as sr
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 from time import sleep
 import pyaudio
 from playsound import playsound
+import time
+from Levenshtein import ratio
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", default="medium", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
+parser.add_argument("--model", default="small", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
 parser.add_argument("--energy_threshold", default=600, help="Energy level for mic to detect.", type=int)
-parser.add_argument("--record_timeout", default=0.5, help="How often we run audio through whisper", type=float)
-parser.add_argument("--phrase_timeout", default=1, help="How much silence before we clear the buffer.", type=float)  
+parser.add_argument("--tolerance", default=1.0, help="The tolerance for considering segments as passed", type=float)
+parser.add_argument("--record_timeout", default=1.0, help="How often we run audio through whisper", type=float)
+parser.add_argument("--phrase_timeout", default=2.0, help="How much silence before we clear the buffer.", type=float)
+parser.add_argument("--consensus_threshold", default=0.75, help="If edit distance ratio > threshold then we speak the segment", type=float)
+parser.add_argument("--input_language", default="English", help="The language that will be spoken as input", type=str)
+parser.add_argument("--translate", action='store_true', help="Whether or not to translate the input (if not included text will be transcribed)")
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
 args = parser.parse_args()
@@ -25,13 +32,14 @@ headers = {
 def recognize(q):
     phrase_time = None
     spoken = 0.0
-    tolerance = 1.0
     prev = None
     phrase_buffer = bytes()
     temp_file = NamedTemporaryFile().name
     
     # Load / Download model
     model = args.model
+    if args.model != "large" and args.input_language.lower() == "english":
+        model = model + ".en"
     audio_model = whisper.load_model(model)
     
     source = sr.Microphone(sample_rate=16000, device_index=args.microphone_id)
@@ -41,6 +49,8 @@ def recognize(q):
     recorder.dynamic_energy_threshold = False
 
     data_queue = Queue()
+    
+    task = "translate" if args.translate else "transcribe"
 
     with source: 
         recorder.adjust_for_ambient_noise(source)
@@ -62,6 +72,7 @@ def recognize(q):
         try:
             if not data_queue.empty():
 
+                # Get all data from the buffer
                 while not data_queue.empty():
                     data = data_queue.get()
                     phrase_buffer += data
@@ -73,29 +84,29 @@ def recognize(q):
                 with open(temp_file, 'w+b') as f:
                     f.write(wav_data.read())
 
-                # Read the transcription.
-                result = audio_model.transcribe(temp_file, fp16=torch.cuda.is_available(), task="translate", language="japanese")
-
+                # Get the transcription / translation
+                result = audio_model.transcribe(temp_file, task=task, language=args.input_language.lower())
+                
                 if args.verbose:
-                    print(f"[[{[s['text'] for s in result['segments'] if s['start'] > spoken - tolerance]}]]")
+                    print(f"[[{[(s['text'], s['start'], s['end']) for s in result['segments']]}]] - {spoken - tolerance}")
 
                 # If there was a previous result, try to find consensus
                 if prev:
                     for s in result['segments']:
                         # If the segment is before where we've already spoken, don't bother
-                        if s['start'] <= spoken - tolerance:
+                        if s['start'] <= spoken - args.tolerance:
                             continue
                         
-                        # If the segment is first and no speech is high, don't speak it
+                        # If the segment is first and no speech prob is high, don't speak
                         if s['start'] == 0.0 and s['no_speech_prob'] > 0.7:
                             continue
                         
-                        # If the segment is past the prev we're done
+                        # If the segment is past the previous spoken segment we're done
                         if s['id'] >= len(prev['segments']):
                             break
                         
-                        # Check if there is consensus and if so, speak
-                        if s['text'] == prev['segments'][s['id']]['text']:
+                        # Check for consensus and if so, speak
+                        if ratio(s['text'], prev['segments'][s['id']]['text']) > args.consensus_threshold:
                             q.put(s['text'].strip())
                             spoken = s['end']
                         else:
@@ -111,7 +122,7 @@ def recognize(q):
                 # if enough time has elapsed, speak all segments currently in the buffer
                 if prev:
                     for s in prev['segments']:
-                        if s['start'] > spoken - tolerance:
+                        if s['start'] > spoken - args.tolerance:
                             if s['start'] == 0.0 and s['no_speech_prob'] > 0.5:
                                 continue
                             else:
@@ -153,7 +164,7 @@ def main():
                     f.write(response.content)
                 playsound(new_temp_file)
             else:
-                print("Error")
+                print("Elevenlabs API Returned an Error")
         except KeyboardInterrupt:
             break
     
