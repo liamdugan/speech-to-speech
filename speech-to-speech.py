@@ -93,23 +93,23 @@ def recognize(q):
                 if args.verbose:
                     print(f"({time2 - time1}) [[{[(s['text'], s['start'], s['end']) for s in result['segments'] if s['start'] > spoken - args.tolerance]}]]")
 
-                # If there was a previous result, try to find consensus
-                if prev:
-                    for s in result['segments']:
-                        # If the segment is before where we've already spoken, don't bother
-                        if s['start'] <= max(spoken - args.tolerance, 0.0):
-                            continue
-                        
-                        # If the segment is first and no speech prob is high, don't speak
-                        if s['start'] == 0.0 and s['no_speech_prob'] > 0.7:
-                            continue
-                        
-                        # If we are not using consensus just speak whatever we have immediately
-                        if args.no_consensus:
-                            q.put(s['text'].strip())
-                            spoken = s['end']
-                            continue
-                        
+                for s in result['segments']:
+                    # If the segment is before where we've already spoken, don't bother
+                    if s['start'] < max(spoken - args.tolerance, 0.0):
+                        continue
+                    
+                    # If the segment is first and no speech prob is high, don't speak
+                    if s['start'] == 0.0 and s['no_speech_prob'] > 0.7:
+                        continue
+                    
+                    # If we are not using consensus just speak whatever we have immediately
+                    if args.no_consensus:
+                        q.put(s['text'].strip())
+                        spoken = s['end']
+                        continue
+                    
+                    # If there was a previous result, try to find consensus
+                    if prev:
                         # If the segment is past the end of where previous had, we're done
                         if s['id'] >= len(prev['segments']):
                             break
