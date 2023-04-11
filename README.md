@@ -1,11 +1,11 @@
-# Translatotron 2
-Code for our re-implementation of translatotron 2
+# Simultaneous Speech to Speech translation w/ Whisper
+The following repository contains code for querying whisper in a simultaneous fashion
 
 ## Setup instructions
 First clone the repo and cd into the main directory
 ``` 
-git clone git@github.com:liamdugan/translatotron2.git 
-cd translatotron2
+git clone git@github.com:liamdugan/speech-to-speech.git 
+cd speech-to-speech
 ```
 
 Then (with conda installed) run
@@ -16,5 +16,5 @@ conda activate ./env
 
 To check to see if the installation worked run
 ```
-python examples/transformer.py
+python pipeline.py
 ```
