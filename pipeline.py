@@ -29,11 +29,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="medium", help="Model to use", choices=["tiny", "base", "small", "medium"])
 parser.add_argument("--policy", default="greedy", help="Policy to use", choices=["greedy", "offline", "confidence", "consensus"])
 parser.add_argument("--num_examples", default=50, help="the number of examples to use for evaluation", type=int)
-parser.add_argument("--consensus_threshold", default=0.75, help="If edit distance ratio > threshold then we speak the segment (for CP)", type=float)
+parser.add_argument("--consensus_threshold", default=0.9, help="If edit distance ratio > threshold then we speak the segment (for CP)", type=float)
 parser.add_argument("--confidence_threshold", default=0.9, help="The threshold over which we speak the segment (for CAP)", type=float)
 args = parser.parse_args()
-
-consensus_threshold = 0.75
 
 def calculate_avg_latency(translations, latencies, tokenizer):
     size = 0.0
@@ -90,7 +88,6 @@ for lang in ['ja', 'es', 'ru', 'ar']:
     covost_2 = load_dataset("google/xtreme_s", f"covost2.{lang}.en")
     covost_2 = covost_2.cast_column("audio", Audio(sampling_rate=16000))
 
-    
     model = whisper.load_model(args.model)
     print(
         f"Model is {'multilingual' if model.is_multilingual else 'English-only'} "
@@ -158,7 +155,7 @@ for lang in ['ja', 'es', 'ru', 'ar']:
                             break
                         
                         # Check for consensus and if so, speak
-                        if ratio(s['text'], prev['segments'][s['id']]['text']) >= consensus_threshold:
+                        if ratio(s['text'], prev['segments'][s['id']]['text']) >= args.consensus_threshold:
                             translation.append(s['text'])
                             latency.append(progress + time.time() - start)
                             spoken += s['end']
