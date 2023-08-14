@@ -1,0 +1,7 @@
+# Input your ElevenLabs API key and URL to use ElevenLabs TTS https://api.elevenlabs.io/docs
+elevenlabs_api_key: ~
+elevenlabs_api_url: ~
+
+# Input your OpenAI API key and an optional organization ID (optional) to use OpenAI Whisper https://platform.openai.com/account/api-keys
+openai_api_key: ~
+openai_org_id: ~

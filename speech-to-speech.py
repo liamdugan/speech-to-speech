@@ -1,5 +1,5 @@
 from multiprocessing import Process, Queue
-import requests, wave, json, argparse, torch, io, os, queue
+import requests, wave, json, argparse, torch, io, os, queue, yaml
 import whisper
 import speech_recognition as sr
 from tempfile import NamedTemporaryFile
@@ -22,12 +22,19 @@ parser.add_argument("--translate", action='store_true', help="Whether or not to 
 parser.add_argument("--no_consensus", action='store_true', help="Disable checking for consensus")
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
+parser.add_argument("--api_keys_path", default="api_keys.yml", help="The path to the api keys file", type=str)
 args = parser.parse_args()
 
-#Eleven Labs
-url = "https://api.elevenlabs.io/v1/text-to-speech/TxGEqnHWrfWFTfGW9XjX"
+with open(args.api_keys_path, "r") as f:
+    try:
+        keys = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(exc)
+
+# ElevenLabs
+url = keys['elevenlabs_api_url']
 headers = {
-    "xi-api-key": "fff703947a1ec48a8e57abc4507bcb30"
+    "xi-api-key": keys['elevenlabs_api_key']
 }
     
 def recognize(q):

@@ -11,6 +11,7 @@ import whisper
 import torchaudio
 import time
 import math
+import yaml
 
 from tqdm import tqdm
 from scipy.io import wavfile
@@ -31,7 +32,14 @@ parser.add_argument("--policy", default="greedy", help="Policy to use", choices=
 parser.add_argument("--num_examples", default=50, help="the number of examples to use for evaluation", type=int)
 parser.add_argument("--consensus_threshold", default=0.9, help="If edit distance ratio > threshold then we speak the segment (for CP)", type=float)
 parser.add_argument("--confidence_threshold", default=0.9, help="The threshold over which we speak the segment (for CAP)", type=float)
+parser.add_argument("--api_keys_path", default="api_keys.yml", help="The path to the api keys file", type=str)
 args = parser.parse_args()
+
+with open(args.api_keys_path, "r") as f:
+    try:
+        keys = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(exc)
 
 def calculate_avg_latency(translations, latencies, tokenizer):
     size = 0.0
