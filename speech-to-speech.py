@@ -8,6 +8,7 @@ from playsound import playsound
 from Levenshtein import ratio
 from recorder import MicrophoneRecorder
 from translator import WhisperLocalTranslator, WhisperAPITranslator
+from policy import Policy
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
@@ -39,6 +40,9 @@ def recognize(q):
     # Initialize the Recorder
     recorder = MicrophoneRecorder(args.microphone_id, config['energy_threshold'], config['sampling_rate'])
     
+    # Initialize the Policy
+    policy = Policy.get_policy(config['policy'], config['confidence_threshold'], config['consensus_threshold'])
+    
     # Start recording and cue the user that we're ready to go
     recorder.start_recording(config['frame_width'])
     print("Ready:")
@@ -66,34 +70,15 @@ def recognize(q):
                 # If the segment is first and no speech prob is high, don't speak
                 if s['start'] == 0.0 and s['no_speech_prob'] > config['no_speech_threshold']:
                     continue
-                
-                # If greedy policy, speak immediately
-                if config['policy'] == "greedy":
-                    q.put(s['text'].strip())
-                    spoken = s['end']
-                    continue
 
-                # If confidence policy & confidence is high, speak
-                if config['policy'] == "confidence" and s['no_speech_prob'] < 1 - config['confidence_threshold']:
+                # If the policy returns that we should speak, speak
+                if policy.apply(s):
                     q.put(s['text'].strip())
                     spoken = s['end']
-                    continue
-                
-                # If consensus policy, try to find consensus
-                if config['policy'] == "consensus" and prev:
-                    # If the segment is past the end of where previous had, we're done
-                    if s['id'] >= len(prev['segments']):
-                        break
-                    
-                    # Check for consensus and if so, speak
-                    if ratio(s['text'], prev['segments'][s['id']]['text']) >= config['consensus_threshold']:
-                        q.put(s['text'].strip())
-                        spoken = s['end']
-                    else:
-                        break
 
             # Save the current result to prev
             prev = result
+            policy.prev = result
             
             # This is the last time we received new audio data from the queue.
             phrase_time = datetime.utcnow()
@@ -108,6 +93,7 @@ def recognize(q):
                         else:
                             q.put(s['text'].strip())
             prev = None
+            policy.prev = None
             spoken = 0.0
             recorder.clear_phrase_buffer()
             phrase_time = None

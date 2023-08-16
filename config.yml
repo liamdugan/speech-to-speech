@@ -11,7 +11,7 @@ frame_width: 1.0
 phrase_timeout: 2.0
 # The amount of overlap we accept between segments 
 # (higher = more likely repetition, lower = more likely to miss phrases)
-overlap_tolerance: 2.0
+overlap_tolerance: 1.0
 
 # TRANSLATOR SETTINGS:
 # ===
@@ -41,7 +41,7 @@ input_language: English
 #   - "offline": speaks only after phrase_timeout has elapsed (max accuracy)
 #   - "confidence": speaks as soon as confidence is above a threshold
 #   - "consensus": speaks when two consecutive translations match
-policy: confidence
+policy: consensus
 # Threshold for the consensus policy (gamma)
 # Translations will be spoken if segments from two consecutive passes have
 # Levenshtein distance ratio of greater than consensus_threshold
