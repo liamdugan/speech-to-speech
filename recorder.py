@@ -1,5 +1,7 @@
 import speech_recognition as sr
 from multiprocessing import Queue
+import io
+from tempfile import NamedTemporaryFile
 
 class MicrophoneRecorder:
     def __init__(self, mic_id, energy_threshold, sampling_rate):
@@ -12,6 +14,8 @@ class MicrophoneRecorder:
             self.recorder.adjust_for_ambient_noise(self.source)
 
         self.data_queue = Queue()
+        self.phrase_buffer = bytes()
+        self.temp_file = NamedTemporaryFile().name + ".wav"
 
     def start_recording(self, frame_width):
 
@@ -25,3 +29,27 @@ class MicrophoneRecorder:
         self.recorder.listen_in_background(self.source, 
                                            record_callback, 
                                            phrase_time_limit=frame_width)
+
+    def has_new_data(self):
+        return not self.data_queue.empty()
+
+    def clear_phrase_buffer(self):
+        self.phrase_buffer = bytes()
+        
+    def flush_queue_to_phrase_buffer(self):
+        while not self.data_queue.empty():
+            data = self.data_queue.get()
+            self.phrase_buffer += data
+        
+    def output_phrase_buffer_to_file(self):
+        # Convert data in phrase buffer to wav data
+        audio_data = sr.AudioData(self.phrase_buffer, 
+                                  self.source.SAMPLE_RATE, 
+                                  self.source.SAMPLE_WIDTH)
+        wav_data = io.BytesIO(audio_data.get_wav_data())
+
+        # Write wav data to the file as bytes.
+        with open(self.temp_file, 'w+b') as f:
+            f.write(wav_data.read())
+
+        return self.temp_file

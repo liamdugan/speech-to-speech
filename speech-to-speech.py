@@ -1,13 +1,11 @@
 from multiprocessing import Process, Queue
-import requests, wave, json, argparse, io, os, queue, yaml
+import requests, json, argparse, yaml
 import whisper
 import speech_recognition as sr
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
-from time import sleep
 from playsound import playsound
 from Levenshtein import ratio
-import time
 from recorder import MicrophoneRecorder
 from translator import WhisperLocalTranslator, WhisperAPITranslator
 
@@ -31,10 +29,8 @@ def recognize(q):
     phrase_time = None
     spoken = 0.0
     prev = None
-    phrase_buffer = bytes()
-    temp_file = NamedTemporaryFile().name + ".wav"
-    
-    # Initialize the Translators
+
+    # Initialize the Translator
     if args.use_local:
         translator = WhisperLocalTranslator(config['model_name'], config['input_language'])
     else:
@@ -49,27 +45,18 @@ def recognize(q):
 
     while True:
         try:
-            if not recorder.data_queue.empty():
-
-                # Get all data from the buffer
-                while not recorder.data_queue.empty():
-                    data = recorder.data_queue.get()
-                    phrase_buffer += data
-
-                audio_data = sr.AudioData(phrase_buffer, recorder.source.SAMPLE_RATE, recorder.source.SAMPLE_WIDTH)
-                wav_data = io.BytesIO(audio_data.get_wav_data())
-
-                # Write wav data to the temporary file as bytes.
-                with open(temp_file, 'w+b') as f:
-                    f.write(wav_data.read())
+            if recorder.has_new_data():
+                # Get the most recent spoken data into the phrase buffer
+                recorder.flush_queue_to_phrase_buffer()
+                
+                # Output the phrase buffer to a temporary file
+                temp_file = recorder.output_phrase_buffer_to_file()
 
                 # Get the transcription / translation
-                t1 = time.time()
                 result = translator.translate(temp_file)
-                t2 = time.time()
                 
                 if args.verbose:
-                    print(f"({t2 - t1}) [[{[(s['text'], s['start'], s['end'], spoken) for s in result['segments'] if s['start'] > spoken - config['overlap_tolerance']]}]]")
+                    print(f"[[{[(s['text'], s['start'], s['end'], spoken) for s in result['segments'] if s['start'] > spoken - config['overlap_tolerance']]}]]")
 
                 for s in result['segments']:
                     # If the segment is before where we've already spoken, don't speak
@@ -112,7 +99,7 @@ def recognize(q):
                 phrase_time = datetime.utcnow()
                 
             elif phrase_time and datetime.utcnow() - phrase_time > timedelta(seconds=config['phrase_timeout']):
-                # if enough time has elapsed, speak all segments currently in the buffer
+                # if enough time has elapsed, speak all segments
                 if prev:
                     for s in prev['segments']:
                         if s['start'] > spoken - config['overlap_tolerance']:
@@ -122,7 +109,7 @@ def recognize(q):
                                 q.put(s['text'].strip())
                 prev = None
                 spoken = 0.0
-                phrase_buffer = bytes()
+                recorder.clear_phrase_buffer()
                 phrase_time = None
         except KeyboardInterrupt:
             break
