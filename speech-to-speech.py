@@ -78,7 +78,7 @@ def recognize(q):
         data = audio.get_raw_data()
         data_queue.put(data)
 
-    recorder.listen_in_background(source, record_callback, phrase_time_limit=config['record_timeout'])
+    recorder.listen_in_background(source, record_callback, phrase_time_limit=config['frame_width'])
 
     # Cue the user that we're ready to go.
     print("Ready:")
@@ -99,16 +99,18 @@ def recognize(q):
                     f.write(wav_data.read())
 
                 # Get the transcription / translation
-                time1 = time.time()
+                t1 = time.time()
                 result = translator.translate(temp_file)
-                time2 = time.time()
+                t2 = time.time()
                 
                 if args.verbose:
-                    print(f"({time2 - time1}) [[{[(s['text'], s['start'], s['end']) for s in result['segments'] if s['start'] > spoken - config['tolerance']]}]]")
+                    threshold = spoken - config['overlap_tolerance']
+                    print(f"({t2 - t1}) [[{[(s['text'], s['start'], s['end'], spoken) 
+                                            for s in result['segments'] if s['start'] > threshold]}]]")
 
                 for s in result['segments']:
                     # If the segment is before where we've already spoken, don't bother
-                    if s['start'] < max(spoken - config['tolerance'], 0.0):
+                    if s['start'] < max(spoken - config['overlap_tolerance'], 0.0):
                         continue
                     
                     # If the segment is first and no speech prob is high, don't speak
@@ -144,7 +146,7 @@ def recognize(q):
                 # if enough time has elapsed, speak all segments currently in the buffer
                 if prev:
                     for s in prev['segments']:
-                        if s['start'] > spoken - config['tolerance']:
+                        if s['start'] > spoken - config['overlap_tolerance']:
                             if s['start'] == 0.0 and s['no_speech_prob'] > 0.5:
                                 continue
                             else:
