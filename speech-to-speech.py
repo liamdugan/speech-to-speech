@@ -1,14 +1,14 @@
 from multiprocessing import Process, Queue
-import requests, wave, json, argparse, torch, io, os, queue, yaml
+import requests, wave, json, argparse, io, os, queue, yaml
 import whisper
 import speech_recognition as sr
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 from time import sleep
-import pyaudio
 from playsound import playsound
-import time
 from Levenshtein import ratio
+import time
+from translator import WhisperLocalTranslator, WhisperAPITranslator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="small", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
@@ -22,6 +22,7 @@ parser.add_argument("--translate", action='store_true', help="Whether or not to 
 parser.add_argument("--no_consensus", action='store_true', help="Disable checking for consensus")
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
+parser.add_argument("--use_local", action='store_true', help='Whether to use the local whisper model instead of the API')
 parser.add_argument("--api_keys_path", default="api_keys.yml", help="The path to the api keys file", type=str)
 args = parser.parse_args()
 
@@ -42,13 +43,13 @@ def recognize(q):
     spoken = 0.0
     prev = None
     phrase_buffer = bytes()
-    temp_file = NamedTemporaryFile().name
+    temp_file = NamedTemporaryFile().name + ".wav"
     
-    # Load / Download model
-    model = args.model
-    if args.model != "large" and args.input_language.lower() == "english":
-        model = model + ".en"
-    audio_model = whisper.load_model(model)
+    # Initialize the Translators
+    if args.use_local:
+        translator = WhisperLocalTranslator(args.model, args.input_language)
+    else:
+        translator = WhisperAPITranslator(keys["openai_api_key"], keys["openai_org_id"], args.input_language)
     
     source = sr.Microphone(sample_rate=16000, device_index=args.microphone_id)
 
@@ -58,7 +59,7 @@ def recognize(q):
 
     data_queue = Queue()
     
-    task = "translate" if args.translate else "transcribe"
+    #task = "translate" if args.translate else "transcribe"
 
     with source: 
         recorder.adjust_for_ambient_noise(source)
@@ -94,7 +95,7 @@ def recognize(q):
 
                 # Get the transcription / translation
                 time1 = time.time()
-                result = audio_model.transcribe(temp_file, fp16=torch.cuda.is_available(), task=task, language=args.input_language)
+                result = translator.translate(temp_file)
                 time2 = time.time()
                 
                 if args.verbose:
@@ -166,9 +167,10 @@ def main():
 
             data = {
                 "text": data,
+                "optimize_streaming_latency": 3,
                 "voice_settings": {
-                    "stability": 0,
-                    "similarity_boost": 0
+                    "stability": 0.5,
+                    "similarity_boost": 0.5
                 }
             }
 
