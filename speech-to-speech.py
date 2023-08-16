@@ -18,25 +18,13 @@ parser.add_argument("--api_keys_path", default="api_keys.yml", help="The path to
 parser.add_argument("--config", default="config.yml", help="The path to the config file", type=str)
 args = parser.parse_args()
 
-# Retrieve the API keys from the yaml
+# Retrieve the API keys from the API keys file
 with open(args.api_keys_path, "r") as f:
-    try:
-        keys = yaml.safe_load(f)
-    except yaml.YAMLError as exc:
-        print(exc)
+    keys = yaml.load(f)
 
-# Retrieve the Config
+# Retrieve the Config info from the config file
 with open(args.config, "r") as f:
-    try:
-        config = yaml.safe_load(f)
-    except yaml.YAMLError as exc:
-        print(exc)
-
-# Set up ElevenLabs request header
-url = keys['elevenlabs_api_url']
-headers = {
-    "xi-api-key": keys['elevenlabs_api_key']
-}
+    config = yaml.load(f)
     
 def recognize(q):
     phrase_time = None
@@ -160,6 +148,12 @@ def main():
     p = Process(target=recognize, args=(q,))
     p.daemon = True
     p.start()
+
+    # Set up ElevenLabs request header
+    url = keys['elevenlabs_api_url']
+    headers = {
+        "xi-api-key": keys['elevenlabs_api_key']
+    }
 
     while True:
         try:
