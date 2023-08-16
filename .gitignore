@@ -3,3 +3,5 @@ env
 */.DS_Store
 api_keys.yml
 audio/
+__pycache__
+*/__pycache__

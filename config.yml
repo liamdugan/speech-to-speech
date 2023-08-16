@@ -1,0 +1,6 @@
+---
+# Settings for the Recorder
+energy_threshold: 600 # The threshold at which the mic will pick up sound (turn up for noisy areas)
+record_timeout: 1.0 # Our frame width in seconds (i.e. how often we run audio through the recognizer) TODO: rename frame_width?
+phrase_timeout: 2.0 # How much silence before we clear the frame buffer in seconds
+tolerance: 1.0 # The amount of overlap we accept between the current spoken time and the next frame (TODO: Play with this?)

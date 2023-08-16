@@ -12,10 +12,6 @@ from translator import WhisperLocalTranslator, WhisperAPITranslator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="small", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
-parser.add_argument("--energy_threshold", default=600, help="Energy level for mic to detect.", type=int)
-parser.add_argument("--tolerance", default=1.0, help="The tolerance for considering segments as passed", type=float)
-parser.add_argument("--record_timeout", default=1.0, help="How often we run audio through whisper", type=float)
-parser.add_argument("--phrase_timeout", default=2.0, help="How much silence before we clear the buffer.", type=float)
 parser.add_argument("--consensus_threshold", default=0.75, help="If edit distance ratio > threshold then we speak the segment", type=float)
 parser.add_argument("--input_language", default="English", help="The language that will be spoken as input", type=str)
 parser.add_argument("--translate", action='store_true', help="Whether or not to translate the input (if not included text will be transcribed)")
@@ -24,15 +20,24 @@ parser.add_argument("--microphone_id", default=1, help="ID for the input microph
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
 parser.add_argument("--use_local", action='store_true', help='Whether to use the local whisper model instead of the API')
 parser.add_argument("--api_keys_path", default="api_keys.yml", help="The path to the api keys file", type=str)
+parser.add_argument("--config", default="config.yml", help="The path to the config file", type=str)
 args = parser.parse_args()
 
+# Retrieve the API keys from the yaml
 with open(args.api_keys_path, "r") as f:
     try:
         keys = yaml.safe_load(f)
     except yaml.YAMLError as exc:
         print(exc)
 
-# ElevenLabs
+# Retrieve the Config
+with open(args.config, "r") as f:
+    try:
+        config = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(exc)
+
+# Set up ElevenLabs request header
 url = keys['elevenlabs_api_url']
 headers = {
     "xi-api-key": keys['elevenlabs_api_key']
@@ -54,7 +59,7 @@ def recognize(q):
     source = sr.Microphone(sample_rate=16000, device_index=args.microphone_id)
 
     recorder = sr.Recognizer()
-    recorder.energy_threshold = args.energy_threshold
+    recorder.energy_threshold = config['energy_threshold']
     recorder.dynamic_energy_threshold = False
 
     data_queue = Queue()
@@ -73,7 +78,7 @@ def recognize(q):
         data = audio.get_raw_data()
         data_queue.put(data)
 
-    recorder.listen_in_background(source, record_callback, phrase_time_limit=args.record_timeout)
+    recorder.listen_in_background(source, record_callback, phrase_time_limit=config['record_timeout'])
 
     # Cue the user that we're ready to go.
     print("Ready:")
@@ -99,11 +104,11 @@ def recognize(q):
                 time2 = time.time()
                 
                 if args.verbose:
-                    print(f"({time2 - time1}) [[{[(s['text'], s['start'], s['end']) for s in result['segments'] if s['start'] > spoken - args.tolerance]}]]")
+                    print(f"({time2 - time1}) [[{[(s['text'], s['start'], s['end']) for s in result['segments'] if s['start'] > spoken - config['tolerance']]}]]")
 
                 for s in result['segments']:
                     # If the segment is before where we've already spoken, don't bother
-                    if s['start'] < max(spoken - args.tolerance, 0.0):
+                    if s['start'] < max(spoken - config['tolerance'], 0.0):
                         continue
                     
                     # If the segment is first and no speech prob is high, don't speak
@@ -135,11 +140,11 @@ def recognize(q):
                 # This is the last time we received new audio data from the queue.
                 phrase_time = datetime.utcnow()
                 
-            elif phrase_time and datetime.utcnow() - phrase_time > timedelta(seconds=args.phrase_timeout):
+            elif phrase_time and datetime.utcnow() - phrase_time > timedelta(seconds=config['phrase_timeout']):
                 # if enough time has elapsed, speak all segments currently in the buffer
                 if prev:
                     for s in prev['segments']:
-                        if s['start'] > spoken - args.tolerance:
+                        if s['start'] > spoken - config['tolerance']:
                             if s['start'] == 0.0 and s['no_speech_prob'] > 0.5:
                                 continue
                             else:
