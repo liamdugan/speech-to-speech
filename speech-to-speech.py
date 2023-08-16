@@ -8,6 +8,7 @@ from time import sleep
 from playsound import playsound
 from Levenshtein import ratio
 import time
+from recorder import MicrophoneRecorder
 from translator import WhisperLocalTranslator, WhisperAPITranslator
 
 parser = argparse.ArgumentParser()
@@ -20,11 +21,11 @@ args = parser.parse_args()
 
 # Retrieve the API keys from the API keys file
 with open(args.api_keys_path, "r") as f:
-    keys = yaml.load(f)
+    keys = yaml.load(f, Loader=yaml.loader.SafeLoader)
 
 # Retrieve the Config info from the config file
 with open(args.config, "r") as f:
-    config = yaml.load(f)
+    config = yaml.load(f, Loader=yaml.loader.SafeLoader)
     
 def recognize(q):
     phrase_time = None
@@ -39,40 +40,23 @@ def recognize(q):
     else:
         translator = WhisperAPITranslator(keys["openai_api_key"], keys["openai_org_id"])
     
-    source = sr.Microphone(sample_rate=16000, device_index=args.microphone_id)
-
-    recorder = sr.Recognizer()
-    recorder.energy_threshold = config['energy_threshold']
-    recorder.dynamic_energy_threshold = False
-
-    data_queue = Queue()
+    # Initialize the Recorder
+    recorder = MicrophoneRecorder(args.microphone_id, config['energy_threshold'], config['sampling_rate'])
     
-    with source: 
-        recorder.adjust_for_ambient_noise(source)
-        
-    def record_callback(_, audio:sr.AudioData) -> None:
-        """
-        Threaded callback function to recieve audio data when recordings finish.
-        audio: An AudioData containing the recorded bytes.
-        """
-        # Grab the raw bytes and push it into the thread safe queue.
-        data = audio.get_raw_data()
-        data_queue.put(data)
-
-    recorder.listen_in_background(source, record_callback, phrase_time_limit=config['frame_width'])
-
-    # Cue the user that we're ready to go.
+    # Start recording and cue the user that we're ready to go
+    recorder.start_recording(config['frame_width'])
     print("Ready:")
+
     while True:
         try:
-            if not data_queue.empty():
+            if not recorder.data_queue.empty():
 
                 # Get all data from the buffer
-                while not data_queue.empty():
-                    data = data_queue.get()
+                while not recorder.data_queue.empty():
+                    data = recorder.data_queue.get()
                     phrase_buffer += data
 
-                audio_data = sr.AudioData(phrase_buffer, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                audio_data = sr.AudioData(phrase_buffer, recorder.source.SAMPLE_RATE, recorder.source.SAMPLE_WIDTH)
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.

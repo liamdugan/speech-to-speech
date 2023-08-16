@@ -3,6 +3,8 @@
 # ===
 # The threshold at which the mic will pick up sound (turn up for noisy areas)
 energy_threshold: 600
+# The sampling rate for microphone audio (default is 16000)
+sampling_rate: 16000
 # Our frame width in seconds (i.e. how often we run audio through the recognizer)
 frame_width: 1.0
 # How much silence must elapse before we clear the frame buffer in seconds
