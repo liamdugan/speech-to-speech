@@ -11,11 +11,6 @@ import time
 from translator import WhisperLocalTranslator, WhisperAPITranslator
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", default="small", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
-parser.add_argument("--consensus_threshold", default=0.75, help="If edit distance ratio > threshold then we speak the segment", type=float)
-parser.add_argument("--input_language", default="English", help="The language that will be spoken as input", type=str)
-parser.add_argument("--translate", action='store_true', help="Whether or not to translate the input (if not included text will be transcribed)")
-parser.add_argument("--no_consensus", action='store_true', help="Disable checking for consensus")
 parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
 parser.add_argument("--use_local", action='store_true', help='Whether to use the local whisper model instead of the API')
@@ -52,9 +47,9 @@ def recognize(q):
     
     # Initialize the Translators
     if args.use_local:
-        translator = WhisperLocalTranslator(args.model, args.input_language)
+        translator = WhisperLocalTranslator(config['model_name'], config['input_language'])
     else:
-        translator = WhisperAPITranslator(keys["openai_api_key"], keys["openai_org_id"], args.input_language)
+        translator = WhisperAPITranslator(keys["openai_api_key"], keys["openai_org_id"])
     
     source = sr.Microphone(sample_rate=16000, device_index=args.microphone_id)
 
@@ -64,8 +59,6 @@ def recognize(q):
 
     data_queue = Queue()
     
-    #task = "translate" if args.translate else "transcribe"
-
     with source: 
         recorder.adjust_for_ambient_noise(source)
         
@@ -104,33 +97,37 @@ def recognize(q):
                 t2 = time.time()
                 
                 if args.verbose:
-                    threshold = spoken - config['overlap_tolerance']
-                    print(f"({t2 - t1}) [[{[(s['text'], s['start'], s['end'], spoken) 
-                                            for s in result['segments'] if s['start'] > threshold]}]]")
+                    print(f"({t2 - t1}) [[{[(s['text'], s['start'], s['end'], spoken) for s in result['segments'] if s['start'] > spoken - config['overlap_tolerance']]}]]")
 
                 for s in result['segments']:
-                    # If the segment is before where we've already spoken, don't bother
+                    # If the segment is before where we've already spoken, don't speak
                     if s['start'] < max(spoken - config['overlap_tolerance'], 0.0):
                         continue
                     
                     # If the segment is first and no speech prob is high, don't speak
-                    if s['start'] == 0.0 and s['no_speech_prob'] > 0.7:
+                    if s['start'] == 0.0 and s['no_speech_prob'] > config['no_speech_threshold']:
                         continue
                     
-                    # If we are not using consensus just speak whatever we have immediately
-                    if args.no_consensus:
+                    # If greedy policy, speak immediately
+                    if config['policy'] == "greedy":
+                        q.put(s['text'].strip())
+                        spoken = s['end']
+                        continue
+
+                    # If confidence policy & confidence is high, speak
+                    if config['policy'] == "confidence" and s['no_speech_prob'] < 1 - config['confidence_threshold']:
                         q.put(s['text'].strip())
                         spoken = s['end']
                         continue
                     
-                    # If there was a previous result, try to find consensus
-                    if prev:
+                    # If consensus policy, try to find consensus
+                    if config['policy'] == "consensus" and prev:
                         # If the segment is past the end of where previous had, we're done
                         if s['id'] >= len(prev['segments']):
                             break
                         
                         # Check for consensus and if so, speak
-                        if ratio(s['text'], prev['segments'][s['id']]['text']) > args.consensus_threshold:
+                        if ratio(s['text'], prev['segments'][s['id']]['text']) >= config['consensus_threshold']:
                             q.put(s['text'].strip())
                             spoken = s['end']
                         else:
