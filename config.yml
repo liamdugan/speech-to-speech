@@ -54,3 +54,17 @@ confidence_threshold: 0.5
 # Threshold for considering a segment to be a "silent" segment.
 # Segments above this threshold will not be spoken regardless of policy
 no_speech_threshold: 0.7
+
+# VOCALIZER SETTINGS:
+# ===
+# -- Settings for elevenlabs
+# The amount we will optimize the streaming latency 
+# Ranges from 0 (default, no latency optimization) to 4 (max latency but low quality)
+# (see: https://docs.elevenlabs.io/api-reference/text-to-speech#query)
+optimize_streaming_latency: 3
+# The stability of the output from 0 to 1 (i.e. how much will prosody fluctuate)
+# and the similarity boost from 0 to 1 (i.e. how much does prev speech influence current)
+# (see: https://docs.elevenlabs.io/api-reference/text-to-speech#body)
+stability: 0.5
+similarity_boost: 0.5
+

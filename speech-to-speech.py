@@ -8,6 +8,7 @@ from playsound import playsound
 from translators.translator import get_translator
 from policies.policy import get_policy
 from recorders.microphone_recorder import MicrophoneRecorder
+from vocalizers.vocalizer import get_vocalizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--microphone_id", default=2, help="ID for the input microphone", type=int)
@@ -100,37 +101,13 @@ def main():
     p.daemon = True
     p.start()
 
-    # Set up ElevenLabs request header
-    url = keys['elevenlabs_api_url']
-    headers = {
-        "xi-api-key": keys['elevenlabs_api_key']
-    }
+    # Initialize vocalizer
+    vocalizer = get_vocalizer("elevenlabs", config, keys)
 
     while True:
-        data = q.get()
-
-        if data is None: continue
-
-        print(data)
-
-        data = {
-            "text": data,
-            "optimize_streaming_latency": 3,
-            "voice_settings": {
-                "stability": 0.5,
-                "similarity_boost": 0.5
-            }
-        }
-
-        response = requests.post(url, data=json.dumps(data), headers=headers)
-
-        if response.status_code == 200:
-            new_temp_file = NamedTemporaryFile().name + ".mp3"
-            with open(new_temp_file, 'w+b') as f:
-                f.write(response.content)
-            playsound(new_temp_file)
-        else:
-            print("Elevenlabs API Returned an Error")
+        if data := q.get():
+            print(data)
+            vocalizer.speak(data)
     
 if __name__ == "__main__":
     main()
