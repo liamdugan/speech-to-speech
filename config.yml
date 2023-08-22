@@ -53,7 +53,7 @@ consensus_threshold: 0.75
 confidence_threshold: 0.5
 # Threshold for considering a segment to be a "silent" segment.
 # Segments above this threshold will not be spoken regardless of policy
-no_speech_threshold: 0.7
+no_speech_threshold: 0.9
 
 # VOCALIZER SETTINGS:
 # ===

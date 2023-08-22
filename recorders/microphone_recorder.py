@@ -36,10 +36,15 @@ class MicrophoneRecorder:
                                            phrase_time_limit=frame_width)
 
     def has_new_data(self):
-        return not self.data_queue.empty()
-
+        # Return true if there is at least 0.1 seconds of audio in the phrase buffer
+        return len(self.phrase_buffer) > 0.1*self.source.SAMPLE_RATE*self.source.SAMPLE_WIDTH
+    
     def clear_phrase_buffer(self):
         self.phrase_buffer = bytes()
+
+    def trim_phrase_buffer(self, pointer):
+        byte_index = int(pointer*self.source.SAMPLE_RATE*self.source.SAMPLE_WIDTH)
+        self.phrase_buffer = self.phrase_buffer[byte_index:]
         
     def flush_queue_to_phrase_buffer(self):
         while not self.data_queue.empty():

@@ -1,4 +1,4 @@
-import openai
+import openai, os
 
 class WhisperAPITranslator:
     def __init__(self, api_key, organization):

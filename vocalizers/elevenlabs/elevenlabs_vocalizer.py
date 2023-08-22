@@ -32,4 +32,4 @@ class ElevenlabsVocalizer:
                 f.write(response.content)
             playsound(new_temp_file)
         else:
-            print("Elevenlabs API Returned an Error")
+            print(f"Elevenlabs API Returned an Error: {response.content}")
