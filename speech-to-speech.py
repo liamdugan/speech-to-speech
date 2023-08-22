@@ -1,10 +1,7 @@
+import argparse, yaml
 from multiprocessing import Process, Queue
-import requests, json, argparse, yaml
-import whisper
-import speech_recognition as sr
-from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
-from playsound import playsound
+
 from translators.translator import get_translator
 from policies.policy import get_policy
 from recorders.microphone_recorder import MicrophoneRecorder
@@ -97,12 +94,13 @@ def recognize(q):
 
 def main():
     q = Queue()
-    p = Process(target=recognize, args=(q,))
-    p.daemon = True
-    p.start()
+    p = Process(target=recognize, daemon=True, args=(q,))
 
     # Initialize vocalizer
     vocalizer = get_vocalizer("elevenlabs", config, keys)
+
+    # Start the recognizer process
+    p.start()
 
     while True:
         if data := q.get():
