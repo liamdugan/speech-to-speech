@@ -4,12 +4,15 @@ import io
 from tempfile import NamedTemporaryFile
 
 class MicrophoneRecorder:
-    def __init__(self, mic_id, energy_threshold, sampling_rate):
+    def __init__(self, mic_id, config):
         # Initialize the microphone and the noise thresholding recognizer
-        self.source = sr.Microphone(sample_rate=sampling_rate, device_index=mic_id)
+        self.source = sr.Microphone(sample_rate=config['sampling_rate'], device_index=mic_id)
         self.recorder = sr.Recognizer()
-        self.recorder.energy_threshold = energy_threshold
+        self.recorder.energy_threshold = config['energy_threshold']
         self.recorder.dynamic_energy_threshold = False
+
+        # Minimum amount of time before we send audio to the translator
+        self.frame_width = config['frame_width']
         
         # Automatically adjust for ambient noise
         with self.source:        
@@ -22,7 +25,7 @@ class MicrophoneRecorder:
         # Temporary file to write to for input to whisper
         self.temp_file = NamedTemporaryFile().name + ".wav"
 
-    def start_recording(self, frame_width):
+    def start_recording(self):
 
         def record_callback(_, audio: sr.AudioData) -> None:
             """
@@ -33,16 +36,18 @@ class MicrophoneRecorder:
 
         self.recorder.listen_in_background(self.source, 
                                            record_callback, 
-                                           phrase_time_limit=frame_width)
+                                           phrase_time_limit=self.frame_width)
 
     def has_new_data(self):
-        # Return true if there is at least 0.1 seconds of audio in the phrase buffer
-        return len(self.phrase_buffer) > 0.1*self.source.SAMPLE_RATE*self.source.SAMPLE_WIDTH
+        # Return true if there is at least frame_width seconds of audio in the phrase buffer
+        min_frames = self.frame_width * self.source.SAMPLE_RATE * self.source.SAMPLE_WIDTH
+        return len(self.phrase_buffer) > min_frames
     
     def clear_phrase_buffer(self):
         self.phrase_buffer = bytes()
 
     def trim_phrase_buffer(self, pointer):
+        # edit phrase buffer to get rid of all speech before the pointer
         byte_index = int(pointer*self.source.SAMPLE_RATE*self.source.SAMPLE_WIDTH)
         self.phrase_buffer = self.phrase_buffer[byte_index:]
         

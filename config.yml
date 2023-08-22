@@ -46,11 +46,11 @@ policy: consensus
 # Translations will be spoken if segments from two consecutive passes have
 # Levenshtein distance ratio of greater than consensus_threshold
 # (higher = more accurate but slower, lower = faster but less accurate)
-consensus_threshold: 0.75
+consensus_threshold: 0.9
 # Threshold for the confidence policy (alpha)
 # Translations will be spoken if chunks have confidence > confidence_threshold
 # (higher = more accurate but slower, lower = faster but less accurate) 
-confidence_threshold: 0.5
+confidence_threshold: 0.7
 # Threshold for considering a segment to be a "silent" segment.
 # Segments above this threshold will not be spoken regardless of policy
 no_speech_threshold: 0.9
@@ -67,4 +67,3 @@ optimize_streaming_latency: 3
 # (see: https://docs.elevenlabs.io/api-reference/text-to-speech#body)
 stability: 0.5
 similarity_boost: 0.5
-

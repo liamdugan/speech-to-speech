@@ -3,7 +3,7 @@ from .whisper.whisper_local import WhisperLocalTranslator
 
 class Translator:
     """Shared interface for all translators"""
-    def translate(self, file: str) -> dict:
+    def translate(self, file: str, prompt: str) -> dict:
         """Name of wav file containing speech goes in, JSON containing a list of segments comes out
            segment is a sequence of tokens with a single confidence score and no speech probability."""
         pass

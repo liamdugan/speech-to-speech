@@ -8,7 +8,7 @@ class WhisperLocalTranslator:
     def change_input_language(self, language):
         self.input_lang = language
 
-    def translate(self, file):
+    def translate(self, file, prompt):
         return self.model.transcribe(file, fp16=True, 
-                                     task="translate", 
+                                     task="translate", prompt=prompt,
                                      language=self.input_lang)

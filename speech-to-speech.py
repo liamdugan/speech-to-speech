@@ -25,14 +25,15 @@ with open(args.config, "r") as f:
 def recognize(q):
     # time that we have spoken until at this point
     spoken = 0.0
+    translation = []
 
-    # Initialize the Translator, Recorder, and Policy
+    # Initialize the Translator and Policy
     translator = get_translator("whisper", args.use_local, config, keys)
     policy = get_policy(config)
-    recorder = MicrophoneRecorder(args.mic, config['energy_threshold'], config['sampling_rate'])
     
     # Start recording and cue the user that we're ready to go
-    recorder.start_recording(config['frame_width'])
+    recorder = MicrophoneRecorder(args.mic, config)
+    recorder.start_recording()
 
     print("Ready:")
     while True:
@@ -44,8 +45,9 @@ def recognize(q):
             temp_file = recorder.output_phrase_buffer_to_file()
 
             # Get the translation from the translator
-            result = translator.translate(temp_file)
+            result = translator.translate(temp_file, prompt=''.join(translation))
             
+            # Log the segments from the translator if we're using logging
             if args.verbose:
                 print(f"[[{[(s['text'], s['start'], s['end']) for s in result['segments']]}]]")
 
@@ -57,6 +59,7 @@ def recognize(q):
                 # If the policy returns that we should speak, speak
                 if policy.apply(s):
                     q.put(s['text'].strip())
+                    translation.append(s['text'].lower())
                     spoken = s['end']
 
             # Save all segments we haven't yet spoken to prev
