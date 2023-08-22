@@ -5,19 +5,26 @@ from tempfile import NamedTemporaryFile
 
 class MicrophoneRecorder:
     def __init__(self, mic_id, config):
-        # Initialize the microphone and the noise thresholding recognizer
-        self.source = sr.Microphone(sample_rate=config['sampling_rate'], device_index=mic_id)
-        self.recorder = sr.Recognizer()
-        self.recorder.energy_threshold = config['energy_threshold']
-        self.recorder.dynamic_energy_threshold = False
+        try:
+            # Initialize the microphone and the noise thresholding recognizer
+            self.source = sr.Microphone(sample_rate=config['sampling_rate'], device_index=mic_id)
+            self.recorder = sr.Recognizer()
+            self.recorder.energy_threshold = config['energy_threshold']
+            self.recorder.dynamic_energy_threshold = False
+            
+            # Automatically adjust for ambient noise 
+            with self.source:
+                self.recorder.adjust_for_ambient_noise(self.source)
+
+        except (AssertionError, AttributeError) as e:
+            print(f"Microphone Error: please select a different mic. Available devices:")
+            for index, name in enumerate(sr.Microphone.list_microphone_names()):
+                print(f"ID: {index} -- {name}")
+            print("Please quit with Control-C and try again")
+            exit(-1)
 
         # Minimum amount of time before we send audio to the translator
         self.frame_width = config['frame_width']
-        
-        # Automatically adjust for ambient noise
-        with self.source:        
-            self.recorder.adjust_for_ambient_noise(self.source)
-
         # Data queue for communication with the background recording thread
         self.data_queue = Queue()
         # Buffer to keep track of all unspoken audio thus far
