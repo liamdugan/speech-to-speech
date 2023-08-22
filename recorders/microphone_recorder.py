@@ -5,21 +5,26 @@ from tempfile import NamedTemporaryFile
 
 class MicrophoneRecorder:
     def __init__(self, mic_id, energy_threshold, sampling_rate):
+        # Initialize the microphone and the noise thresholding recognizer
         self.source = sr.Microphone(sample_rate=sampling_rate, device_index=mic_id)
         self.recorder = sr.Recognizer()
         self.recorder.energy_threshold = energy_threshold
         self.recorder.dynamic_energy_threshold = False
         
-        with self.source:
+        # Automatically adjust for ambient noise
+        with self.source:        
             self.recorder.adjust_for_ambient_noise(self.source)
 
+        # Data queue for communication with the background recording thread
         self.data_queue = Queue()
+        # Buffer to keep track of all unspoken audio thus far
         self.phrase_buffer = bytes()
+        # Temporary file to write to for input to whisper
         self.temp_file = NamedTemporaryFile().name + ".wav"
 
     def start_recording(self, frame_width):
 
-        def record_callback(_, audio:sr.AudioData) -> None:
+        def record_callback(_, audio: sr.AudioData) -> None:
             """
             Threaded callback function to recieve audio data when recordings finish.
             audio: An AudioData containing the recorded bytes.

@@ -5,13 +5,12 @@ import speech_recognition as sr
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
 from playsound import playsound
-from Levenshtein import ratio
-from recorder import MicrophoneRecorder
-from translator import WhisperLocalTranslator, WhisperAPITranslator
-from policy import Policy
+from translators.translator import get_translator
+from policies.policy import get_policy
+from recorders.microphone_recorder import MicrophoneRecorder
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--microphone_id", default=1, help="ID for the input microphone", type=int)
+parser.add_argument("--microphone_id", default=2, help="ID for the input microphone", type=int)
 parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
 parser.add_argument("--use_local", action='store_true', help='Whether to use the local whisper model instead of the API')
 parser.add_argument("--api_keys", default="api_keys.yml", help="The path to the api keys file", type=str)
@@ -32,16 +31,13 @@ def recognize(q):
     prev = None
 
     # Initialize the Translator
-    if args.use_local:
-        translator = WhisperLocalTranslator(config['model_name'], config['input_language'])
-    else:
-        translator = WhisperAPITranslator(keys["openai_api_key"], keys["openai_org_id"])
+    translator = get_translator("whisper", args.use_local, config, keys)
     
     # Initialize the Recorder
     recorder = MicrophoneRecorder(args.microphone_id, config['energy_threshold'], config['sampling_rate'])
     
     # Initialize the Policy
-    policy = Policy.get_policy(config['policy'], config['confidence_threshold'], config['consensus_threshold'])
+    policy = get_policy(config)
     
     # Start recording and cue the user that we're ready to go
     recorder.start_recording(config['frame_width'])
@@ -56,7 +52,7 @@ def recognize(q):
             # Output the phrase buffer to a temporary file
             temp_file = recorder.output_phrase_buffer_to_file()
 
-            # Get the transcription / translation
+            # Get the translation from the translator
             result = translator.translate(temp_file)
             
             if args.verbose:
