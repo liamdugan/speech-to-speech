@@ -64,7 +64,7 @@ def recognize(q):
             policy.prev = result
 
             # Log the unspoken hypotheses and spoken text to the console
-            Logger.print_transcription(translation, result, args.verbose)
+            Logger.print_transcription(translation, result)
 
             # Clear all spoken audio from the phrase buffer and reset spoken pointer
             recorder.trim_phrase_buffer(spoken)
