@@ -8,9 +8,8 @@ from vocalizers.vocalizer import get_vocalizer
 from logger import Logger
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--mic", default=0, help="ID for the input microphone", type=int)
-parser.add_argument("--verbose", action='store_true', help='Whether to print out the intermediate results or not')
-parser.add_argument("--use_local", action='store_true', help='Whether to use the local whisper model instead of the API')
+parser.add_argument("--mic", default=0, help="Integer ID for the input microphone (default: 0)", type=int)
+parser.add_argument("--use_local", action='store_true', help='Whether to use local models instead of APIs')
 parser.add_argument("--api_keys", default="api_keys.yml", help="The path to the api keys file", type=str)
 parser.add_argument("--config", default="config.yml", help="The path to the config file", type=str)
 args = parser.parse_args()
@@ -59,14 +58,14 @@ def recognize(q):
                     translation.append(s['text'])
                     spoken = s['end']
 
-            # Save all segments we haven't yet spoken to prev
+            # Save what we haven't yet spoken to prev (for consensus policy)
             result['segments'] = [s for s in result['segments'] if s['end'] > spoken]
             policy.prev = result
 
-            # Log the unspoken hypotheses and spoken text to the console
+            # Print the hypotheses and spoken text to the console
             Logger.print_transcription(translation, result)
 
-            # Clear all spoken audio from the phrase buffer and reset spoken pointer
+            # Clear spoken audio from the phrase buffer and reset spoken pointer
             recorder.trim_phrase_buffer(spoken)
             spoken = 0.0
 
