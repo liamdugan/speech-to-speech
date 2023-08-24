@@ -7,11 +7,6 @@ energy_threshold: 600
 sampling_rate: 16000
 # Our frame width in seconds (i.e. how often we run audio through the recognizer)
 frame_width: 1.0
-# How much silence must elapse before we clear the frame buffer in seconds
-phrase_timeout: 2.0
-# The amount of overlap we accept between segments 
-# (higher = more likely repetition, lower = more likely to miss phrases)
-overlap_tolerance: 1.0
 
 # TRANSLATOR SETTINGS:
 # ===
@@ -19,7 +14,7 @@ overlap_tolerance: 1.0
 # The name of the local whisper model to use (note: large defaults to large-v2)
 # Choices: ["tiny", "base", "small", "medium", "large"]
 model_name: medium
-# The language of input
+# The language of input (not required for api whisper)
 # Choices: [Afrikaans, Arabic, Armenian, Azerbaijani, 
 # Belarusian, Bosnian, Bulgarian, Catalan, Chinese, 
 # Croatian, Czech, Danish, Dutch, English, Estonian, 
