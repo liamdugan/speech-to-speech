@@ -5,11 +5,18 @@ This repository contains code for the INTERSPEECH 2023 paper "Learning When to S
 
 ## Installation
 ### Step 1: Install portaudio (required for PyAudio)
-Windows/Linux
-```
-sudo apt-get install portaudio
-```
-Mac
+**Windows**
+
+Consider using WSL and following the Linux instructions below. Otherwise, compile portaudio for Windows:
+https://portaudio.com/docs/v19-doxydocs/compile_cmake.html
+
+**Linux**
+
+Download the portaudio source from https://files.portaudio.com/download.html.
+
+Extract the source into its own directory and compile portaudio using `./configure && make install`.
+
+**Mac**
 ```
 brew install portaudio
 ```
