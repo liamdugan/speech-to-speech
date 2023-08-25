@@ -7,8 +7,7 @@ This repository contains code for the INTERSPEECH 2023 paper "Learning When to S
 ### Step 1: Install portaudio (required for PyAudio)
 **Windows**
 
-Consider using WSL and following the Linux instructions below. Otherwise, compile portaudio for Windows:
-https://portaudio.com/docs/v19-doxydocs/compile_cmake.html
+Luckily, pyaudio seems to compile portaudio upon installation automatically. No manual installation is needed.
 
 **Linux**
 
