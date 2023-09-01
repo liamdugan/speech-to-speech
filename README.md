@@ -7,7 +7,7 @@ This repository contains code for the INTERSPEECH 2023 paper "Learning When to S
 ### Step 1: Install portaudio (required for PyAudio)
 **Windows**
 
-Luckily, pyaudio seems to compile portaudio upon installation automatically. No manual installation is needed.
+Pyaudio seems to compile portaudio upon installation automatically. No manual installation is needed.
 
 **Linux**
 
@@ -19,29 +19,31 @@ Extract the source into its own directory and compile portaudio using `./configu
 ```
 brew install portaudio
 ```
-### Step 2: Clone Repository and create Conda environment
+### Step 2: Clone Repository
 Clone the repo and cd into the main directory
 ``` 
-git clone git@github.com:liamdugan/speech-to-speech.git 
+git clone https://github.com/liamdugan/speech-to-speech.git
 cd speech-to-speech
 ```
 
-Then (with conda installed) create a new conda environment (must be python 3.8+)
+### Step 3: Create Environment and install dependencies 
+**Conda** (must be Python 3.8 or higher)
 ```
 conda env create -n s2st python=3.8
 conda activate s2st
-```
-
-### Step 3: Install dependencies
-From within your Conda environment run
-```
 pip install -r requirements.txt
 ```
-And you should be good to go!
+**Venv** (must be Python 3.8 or higher)
+```
+python -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+```
+and you're good to go!
 
 ## Usage
 
-You first need to populate the `api_keys.yml` file with your API keys for both OpenAI and ElevenLabs. For OpenAI go to [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys) and for ElevenLabs go to [https://api.elevenlabs.io/docs](https://api.elevenlabs.io/docs).
+First populate the `api_keys.yml` file with your API keys for both OpenAI and ElevenLabs. For OpenAI go to [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys) and for ElevenLabs go to [https://api.elevenlabs.io/docs](https://api.elevenlabs.io/docs).
 
 After you are finished use `speech-to-speech.py` to run the system. Add the `--use_local` flag to use the local version of whisper (model size and input language will be taken from the `config.yml` file). The full options are listed below
 ```
