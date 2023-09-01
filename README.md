@@ -1,7 +1,7 @@
 # Simultaneous Speech to Speech Translation w/ Whisper
 ![/assets/demo.gif](/assets/demo.gif)
 
-This repository contains code for the INTERSPEECH 2023 paper "Learning When to Speak: Latency and Quality Trade-offs for Simultaneous Speech-to-Speech Translation with Offline Models" ([link](https://www.isca-speech.org/archive/pdfs/interspeech_2023/dugan23_interspeech.pdf!)). In our paper we introduce simple techniques for converting offline speech to text translation systems (like whisper) into real-time simultaneous translation systems.
+This repository contains code for the INTERSPEECH 2023 paper "Learning When to Speak: Latency and Quality Trade-offs for Simultaneous Speech-to-Speech Translation with Offline Models" ([link](https://www.isca-speech.org/archive/pdfs/interspeech_2023/dugan23_interspeech.pdf)). In our paper we introduce simple techniques for converting offline speech to text translation systems (like whisper) into real-time simultaneous translation systems.
 
 ## Installation
 ### Step 1: Install portaudio (required for PyAudio)
